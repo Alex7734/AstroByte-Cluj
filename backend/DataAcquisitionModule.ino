@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <Wire.h>
 #include <esp_now.h>
+#include <DHT.h>
 
 uint8_t macServer[] = {0x7C, 0x87, 0xCE, 0x2D, 0x6C, 0x60};
 
@@ -12,15 +13,22 @@ uint8_t macServer[] = {0x7C, 0x87, 0xCE, 0x2D, 0x6C, 0x60};
 
 #define ThermistorPin 34
 
+#define humPin 16
+
+DHt dht(humPin, DHT11);
+
 // Define variables to store commands to be sent
 bool command;
 float temp;
 int gas;
+int humidity;
 
 // Define variables to store incoming commands
 bool incomingCommand;
 float incomingTemp;
 int incomingGas;
+int incomingHumidity;
+
 
 // Variable to store if sending data was successful
 String success;
@@ -30,6 +38,7 @@ typedef struct struct_message {
     bool command;
     double temp;
     int gas;
+    int humidity;
 } struct_message;
 
 // Create a struct_message
@@ -57,7 +66,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     Serial.println(len);
     incomingCommand = incomingCommandPacket.command;
     incomingTemp = incomingCommandPacket.temp;
+    incomingGas = incomingCommandPacket.gas;
+    incomingHumidity = incomingCommandPacket.humidity;
+    
 }
+    
 
 double adcMax, Vs;
 
@@ -348,6 +361,7 @@ int k = 0;
 void setup() {
 
     Serial.begin(19200);
+    dht.begin();
 
     pinMode(gasAnalog,INPUT);
     pinMode(gasDigital,OUTPUT);
@@ -394,6 +408,8 @@ void setup() {
 
 void loop() {
 
+    humidity = dht.readHumidity();
+
     double Vout, Rt = 0;
     double T, Tc;
 
@@ -423,6 +439,7 @@ void loop() {
             commandsToBeSent.command = 1;
             commandsToBeSent.temp = temp;
             commandsToBeSent.gas = gas;
+            commandsToBeSent.humidity = humidity;
             esp_now_send(macServer, (uint8_t *) &commandsToBeSent, sizeof(commandsToBeSent));
             k = 0;
         }
